@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SQUARI APP</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; background: #e5ddd5; display: flex; flex-direction: column; height: 100vh; }
+        #box { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; }
+        .msg { background: white; padding: 10px; margin: 5px 0; border-radius: 10px; align-self: flex-start; max-width: 80%; }
+        .my { background: #dcf8c6; align-self: flex-end; }
+        #area { display: flex; padding: 10px; background: #f0f0f0; }
+        input { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ccc; outline: none; }
+        button { margin-left: 10px; background: #075e54; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; }
+    </style>
+</head>
+<body>
+    <div id="box"></div>
+    <div id="area">
+        <input type="text" id="in" placeholder="Сообщение...">
+        <button onclick="send()">➤</button>
+    </div>
+    <script>
+        function send() {
+            var i = document.getElementById('in');
+            if(i.value) {
+                var d = document.createElement('div');
+                d.className = 'msg my';
+                d.innerText = i.value;
+                document.getElementById('box').appendChild(d);
+                i.value = '';
+                document.getElementById('box').scrollTop = 9999;
+            }
+        }
+    </script>
+</body>
+</html>
+
