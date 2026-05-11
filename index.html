@@ -2,87 +2,80 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>SQUARI 2.0</title>
-    <script src="https://gstatic.com"></script>
-    <script src="https://gstatic.com"></script>
+    <script src="https://pubnub.com"></script>
     <style>
-        body { font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background: #e5ddd5; }
+        body { font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background: #e5ddd5; overflow: hidden; }
         #setup { position: fixed; top:0; left:0; width:100%; height:100%; background:#fff; z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-        #header { background: #075e54; color: white; padding: 10px; font-weight: bold; text-align: center; }
+        #header { background: #075e54; color: white; padding: 12px; font-weight: bold; text-align: center; font-size: 16px; }
         #messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; }
-        .msg { background: white; padding: 8px 12px; margin: 5px 0; border-radius: 12px; align-self: flex-start; max-width: 80%; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 14px; line-height: 1.4; }
+        .msg { background: white; padding: 8px 12px; margin: 4px 0; border-radius: 10px; align-self: flex-start; max-width: 80%; box-shadow: 0 1px 1px rgba(0,0,0,0.1); font-size: 14px; }
         #input-area { display: flex; padding: 8px; background: #f0f0f0; border-top: 1px solid #ccc; align-items: center; }
-        
-        /* Исправленные поля */
-        .setup-input { margin: 8px; padding: 8px 15px; width: 80%; border-radius: 20px; border: 1px solid #ccc; font-size: 16px; height: 40px; outline: none; }
-        #mInput { flex: 1; padding: 0 15px; border-radius: 20px; border: 1px solid #ccc; outline: none; height: 38px; font-size: 16px; background: white; }
-        
-        button { margin-left: 8px; background: #075e54; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 18px; }
-        .start-btn { border-radius: 20px; width: 80%; height: 45px; background: #075e54; color: #fff; font-size: 16px; font-weight: bold; border: none; margin-top: 15px; }
+        .inp { margin: 5px; padding: 10px; width: 80%; border-radius: 10px; border: 1px solid #ccc; font-size: 16px; height: 40px; box-sizing: border-box; }
+        #mInput { flex: 1; padding: 0 15px; border-radius: 20px; border: 1px solid #ccc; height: 36px; font-size: 14px; outline: none; }
+        button { margin-left: 8px; background: #075e54; color: white; border: none; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; font-size: 16px; }
+        .btn-main { border-radius: 10px; width: 80%; height: 45px; background: #075e54; color: #fff; font-size: 16px; border: none; margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <div id="setup">
-    <h2 style="color:#075e54; margin-bottom: 20px;">SQUARI</h2>
-    <input type="text" id="userName" class="setup-input" placeholder="Ваше имя">
-    <input type="text" id="roomName" class="setup-input" placeholder="ID комнаты (любое число)">
-    <button class="start-btn" onclick="start()">ВОЙТИ В ЧАТ</button>
+    <h2 style="color:#075e54">SQUARI</h2>
+    <input type="text" id="uName" class="inp" placeholder="Твое имя">
+    <input type="text" id="rName" class="inp" placeholder="ID чата">
+    <button class="btn-main" onclick="init()">ВОЙТИ</button>
 </div>
 
-<div id="header">SQUARI: <span id="currentRoom">...</span></div>
+<div id="header">Чат: <span id="roomTitle">...</span></div>
 <div id="messages"></div>
-
 <div id="input-area">
-    <input type="search" id="mInput" placeholder="Сообщение...">
+    <input type="text" id="mInput" placeholder="Сообщение...">
     <button onclick="send()">➤</button>
 </div>
 
 <script>
-    var dbRef;
-    var myName = "";
+    var pubnub, channel, myName;
 
-    function start() {
-        myName = document.getElementById('userName').value.trim();
-        var room = document.getElementById('roomName').value.trim();
-        if(!myName || !room) return alert("Введите имя и ID!");
+    function init() {
+        myName = document.getElementById('uName').value.trim();
+        channel = document.getElementById('rName').value.trim();
+        if(!myName || !channel) return alert("Заполни поля!");
 
-        document.getElementById('currentRoom').innerText = room;
+        document.getElementById('roomTitle').innerText = channel;
         document.getElementById('setup').style.display = 'none';
 
-        // Инициализация базы
-        var config = { databaseURL: "https://firebaseio.com" };
-        if (!firebase.apps.length) firebase.initializeApp(config);
-        
-        dbRef = firebase.database().ref("rooms/" + room);
-
-        // Сразу пробуем отправить тестовое сообщение, чтобы "пробить" базу
-        dbRef.push({ user: "Система", text: myName + " вошел в чат" });
-
-        // Слушатель базы
-        dbRef.on('child_added', function(snap) {
-            var data = snap.val();
-            var messagesDiv = document.getElementById('messages');
-            var div = document.createElement("div");
-            div.className = "msg";
-            div.innerHTML = "<b>" + data.user + "</b><br>" + data.text;
-            messagesDiv.appendChild(div);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        pubnub = new PubNub({
+            publishKey: 'pub-c-46132049-74d3-490b-9523-28f095d67711',
+            subscribeKey: 'sub-c-1049969a-0e9e-4e67-96a6-f14d872f2d93',
+            userId: myName
         });
+
+        pubnub.subscribe({ channels: [channel] });
+
+        pubnub.addListener({
+            message: function(m) {
+                var div = document.createElement("div");
+                div.className = "msg";
+                div.innerHTML = "<b>" + m.message.user + "</b><br>" + m.message.text;
+                document.getElementById('messages').appendChild(div);
+                document.getElementById('messages').scrollTop = 999999;
+            }
+        });
+        
+        // Тестовый сигнал
+        send("Вошел в чат");
     }
 
-    function send() {
+    function send(txt) {
         var input = document.getElementById('mInput');
-        if (input.value.trim() !== "" && dbRef) {
-            dbRef.push({
-                user: myName,
-                text: input.value
-            }).catch(function(error) {
-                alert("Ошибка базы: " + error.message);
+        var messageText = txt || input.value.trim();
+        if (messageText && pubnub) {
+            pubnub.publish({
+                channel: channel,
+                message: { user: myName, text: messageText }
             });
             input.value = "";
-            input.focus();
         }
     }
 </script>
