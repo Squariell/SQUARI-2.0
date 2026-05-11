@@ -4,39 +4,38 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>SQUARI 2.0</title>
-    <!-- Библиотека Firebase -->
     <script src="https://gstatic.com"></script>
     <script src="https://gstatic.com"></script>
     <style>
         body { font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background: #e5ddd5; }
         #setup { position: fixed; top:0; left:0; width:100%; height:100%; background:#fff; z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-        #header { background: #075e54; color: white; padding: 12px; font-weight: bold; text-align: center; font-size: 18px; }
+        #header { background: #075e54; color: white; padding: 10px; font-weight: bold; text-align: center; }
         #messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; }
-        .msg { background: white; padding: 10px; margin: 5px 0; border-radius: 12px; align-self: flex-start; max-width: 80%; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 15px; }
+        .msg { background: white; padding: 8px 12px; margin: 5px 0; border-radius: 12px; align-self: flex-start; max-width: 80%; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 14px; line-height: 1.4; }
         #input-area { display: flex; padding: 8px; background: #f0f0f0; border-top: 1px solid #ccc; align-items: center; }
         
-        /* Исправленные пропорции полей */
-        .setup-input { margin: 8px; padding: 10px; width: 80%; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; height: 40px; box-sizing: border-box; }
-        #mInput { flex: 1; padding: 0 15px; border-radius: 20px; border: 1px solid #ccc; outline: none; height: 40px; font-size: 16px; }
+        /* Исправленные поля */
+        .setup-input { margin: 8px; padding: 8px 15px; width: 80%; border-radius: 20px; border: 1px solid #ccc; font-size: 16px; height: 40px; outline: none; }
+        #mInput { flex: 1; padding: 0 15px; border-radius: 20px; border: 1px solid #ccc; outline: none; height: 38px; font-size: 16px; background: white; }
         
-        button { margin-left: 8px; background: #075e54; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
-        .start-btn { border-radius: 8px; width: 80%; height: 45px; background: #075e54; color: #fff; font-size: 16px; font-weight: bold; margin-top: 10px; }
+        button { margin-left: 8px; background: #075e54; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 18px; }
+        .start-btn { border-radius: 20px; width: 80%; height: 45px; background: #075e54; color: #fff; font-size: 16px; font-weight: bold; border: none; margin-top: 15px; }
     </style>
 </head>
 <body>
 
 <div id="setup">
-    <h2 style="color:#075e54">SQUARI</h2>
-    <input type="text" id="userName" class="setup-input" placeholder="Твое имя">
-    <input type="text" id="roomName" class="setup-input" placeholder="ID чата (например: 555)">
-    <button class="start-btn" onclick="start()">Войти</button>
+    <h2 style="color:#075e54; margin-bottom: 20px;">SQUARI</h2>
+    <input type="text" id="userName" class="setup-input" placeholder="Ваше имя">
+    <input type="text" id="roomName" class="setup-input" placeholder="ID комнаты (любое число)">
+    <button class="start-btn" onclick="start()">ВОЙТИ В ЧАТ</button>
 </div>
 
-<div id="header">Чат: <span id="currentRoom">...</span></div>
+<div id="header">SQUARI: <span id="currentRoom">...</span></div>
 <div id="messages"></div>
 
 <div id="input-area">
-    <input type="text" id="mInput" placeholder="Сообщение...">
+    <input type="search" id="mInput" placeholder="Сообщение...">
     <button onclick="send()">➤</button>
 </div>
 
@@ -45,27 +44,31 @@
     var myName = "";
 
     function start() {
-        myName = document.getElementById('userName').value;
-        var room = document.getElementById('roomName').value;
-        if(!myName || !room) return alert("Заполни поля!");
+        myName = document.getElementById('userName').value.trim();
+        var room = document.getElementById('roomName').value.trim();
+        if(!myName || !room) return alert("Введите имя и ID!");
 
         document.getElementById('currentRoom').innerText = room;
         document.getElementById('setup').style.display = 'none';
 
-        // Настройка твоей базы
+        // Инициализация базы
         var config = { databaseURL: "https://firebaseio.com" };
         if (!firebase.apps.length) firebase.initializeApp(config);
         
         dbRef = firebase.database().ref("rooms/" + room);
 
-        // Слушаем сообщения
+        // Сразу пробуем отправить тестовое сообщение, чтобы "пробить" базу
+        dbRef.push({ user: "Система", text: myName + " вошел в чат" });
+
+        // Слушатель базы
         dbRef.on('child_added', function(snap) {
             var data = snap.val();
+            var messagesDiv = document.getElementById('messages');
             var div = document.createElement("div");
             div.className = "msg";
-            div.innerHTML = "<b>" + data.user + ":</b><br>" + data.text;
-            document.getElementById('messages').appendChild(div);
-            document.getElementById('messages').scrollTop = 999999;
+            div.innerHTML = "<b>" + data.user + "</b><br>" + data.text;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         });
     }
 
@@ -75,8 +78,11 @@
             dbRef.push({
                 user: myName,
                 text: input.value
+            }).catch(function(error) {
+                alert("Ошибка базы: " + error.message);
             });
             input.value = "";
+            input.focus();
         }
     }
 </script>
