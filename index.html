@@ -1,58 +1,75 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>SQUARI 2.0</title>
+    <script src="https://gstatic.com"></script>
+    <script src="https://gstatic.com"></script>
     <style>
         body { font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background: #e5ddd5; }
+        #setup { position: fixed; top:0; left:0; width:100%; height:100%; background:#fff; z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; }
         #header { background: #075e54; color: white; padding: 15px; font-weight: bold; text-align: center; }
         #messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; }
-        .msg { background: white; padding: 10px; margin: 5px 0; border-radius: 12px; align-self: flex-start; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 16px; }
+        .msg { background: white; padding: 10px; margin: 5px 0; border-radius: 12px; align-self: flex-start; max-width: 80%; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         #input-area { display: flex; padding: 10px; background: #f0f0f0; border-top: 1px solid #ccc; }
         input { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #ccc; outline: none; }
-        button { margin-left: 10px; background: #075e54; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 20px; font-weight: bold; }
+        button { margin-left: 10px; background: #075e54; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; }
+        .setup-input { margin: 10px; padding: 15px; width: 80%; border-radius: 10px; border: 1px solid #ccc; }
     </style>
 </head>
 <body>
-    <div id="header">SQUARI MESSENGER</div>
-    <div id="messages"></div>
-    <div id="input-area">
-        <input type="text" id="msgInput" placeholder="Пиши сюда...">
-        <button onclick="send()">➤</button>
-    </div>
 
-    <!-- Загружаем библиотеку -->
-    <script src="https://gstatic.com"></script>
-    <script src="https://gstatic.com"></script>
+<div id="setup">
+    <h2>SQUARI Messenger</h2>
+    <input type="text" id="userName" class="setup-input" placeholder="Твое имя">
+    <input type="text" id="roomName" class="setup-input" placeholder="ID чата (например: 777)">
+    <button style="border-radius:10px; width:85%; height:50px; background:#075e54; color:#fff;" onclick="start()">Войти</button>
+</div>
 
-    <script>
-        // Инициализация твоей базы
-        var config = { databaseURL: "https://squari-default-rtdb.firebaseio.com" };
-        firebase.initializeApp(config);
-        var db = firebase.database().ref("messages");
+<div id="header">Чат: <span id="currentRoom">...</span></div>
+<div id="messages"></div>
+<div id="input-area">
+    <input type="text" id="mInput" placeholder="Сообщение...">
+    <button onclick="send()">➤</button>
+</div>
 
-        // Функция отправки
-        function send() {
-            var val = document.getElementById("msgInput").value;
-            if (val.trim() !== "") {
-                db.push({
-                    text: val,
-                    time: new Date().toLocaleTimeString()
-                });
-                document.getElementById("msgInput").value = "";
-            }
-        }
+<script>
+    let dbRef;
+    let myName = "";
 
-        // Функция получения
-        db.on("child_added", function(snap) {
-            var data = snap.val();
-            var div = document.createElement("div");
+    function start() {
+        myName = document.getElementById('userName').value;
+        const room = document.getElementById('roomName').value;
+        if(!myName || !room) return alert("Заполни поля!");
+
+        document.getElementById('currentRoom').innerText = room;
+        document.getElementById('setup').style.display = 'none';
+
+        // Твоя база
+        const firebaseConfig = { databaseURL: "https://firebaseio.com" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        
+        // Подключаемся к конкретной комнате
+        dbRef = firebase.database().ref("rooms/" + room);
+
+        // Загружаем историю и слушаем новые
+        dbRef.on('child_added', (snap) => {
+            const data = snap.val();
+            const div = document.createElement("div");
             div.className = "msg";
-            div.innerHTML = "<div>" + data.text + "</div><small style='color:gray; font-size:10px;'>" + data.time + "</small>";
-            document.getElementById("messages").appendChild(div);
-            document.getElementById("messages").scrollTop = 999999;
+            div.innerHTML = "<b>" + data.user + ":</b><br>" + data.text;
+            document.getElementById('messages').appendChild(div);
+            document.getElementById('messages').scrollTop = 999999;
         });
-    </script>
+    }
+
+    function send() {
+        const input = document.getElementById('mInput');
+        if (input.value.trim() !== "" && dbRef) {
+            dbRef.push({ user: myName, text: input.value });
+            input.value = "";
+        }
+    }
+</script>
 </body>
 </html>
